@@ -1,0 +1,174 @@
+---
+title: "CP1"
+author: "Brian Liswell"
+date: "12/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Repro Course Project 1
+
+### Commit containing full submission
+
+### 1. Code for reading in the dataset and/or processing the data
+
+activity.csv contains 3 variables, steps, date and interval.  Each 5 second interval ranges from 0 to 2355 at the end of the day.
+
+```{r }
+data <- read.csv('activity.csv')
+summary(data)
+```
+
+### 2. Histogram of the total number of steps taken each day
+
+
+```{r echo = TRUE}
+data_by_date <- split(data,data$date)
+
+date_names <- names(data_by_date)
+
+steps_per_day <-numeric(length(date_names))
+for(i in 1:length(steps_per_day)){  #length(steps_per_day)
+        temp<-data_by_date[[date_names[i]]]$steps
+        steps_per_day[i] <- sum(temp)
+        
+}
+hist(steps_per_day)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+### 3. Mean and median number of steps taken each day
+```{r echo = TRUE}
+mean(steps_per_day,na.rm = TRUE)
+```
+```{r echo = TRUE}
+median(steps_per_day,na.rm = TRUE)
+```
+
+### 4. Time series plot of the average number of steps taken.
+I think this means the total number of steps taken per day.  Otherwise, over what time period is the "average"
+
+```{r echo = TRUE}
+library(ggplot2)
+
+data_total <-data.frame(day = as.Date(date_names),value = steps_per_day)
+
+p2 <- ggplot(data_total, aes(x = day, y = steps_per_day)) + 
+        geom_line() +
+        xlab("")
+p2
+```
+
+### OR
+4. means to average accross all the 5 minute intervals from each day, which could be how to interpret number 5.
+```{r echo = TRUE}
+steps_per_5min <-numeric(length(data_by_date[[date_names[1]]]$steps))
+interval <- data_by_date[[date_names[1]]]$interval
+cnt <-0
+for(i in 1:length(date_names)){  #length(steps_per_day)
+        temp<-data_by_date[[date_names[i]]]$steps
+        temp[is.na(temp)] <-0
+        steps_per_5min <- steps_per_5min + temp
+        cnt <- cnt+1
+}
+avg_per_5min <- steps_per_5min/cnt
+interval_avg <-data.frame(interval = interval,value = avg_per_5min)
+
+p3 <- ggplot(interval_avg, aes(x = interval, y = value)) + 
+        geom_line() +
+        xlab("interval value, seconds")+
+        ylab("Average number of steps accross all days")
+p3
+```
+
+### 5. The 5-minute interval that, on average, contains the maximum number of steps
+```{r echo = TRUE}
+max_ind <- which.max(steps_per_5min)
+print(paste0("interval number ",max_ind))
+
+print(paste0("At this many seconds into the day ",interval[max_ind]))
+```
+
+### 6. Code to describe and show a strategy for imputing missing data
+
+I did this above in step 4, with temp[is.na(temp)] <-0, which replaces the missing data with 0.  I did not do this for the code in step 2.  See the effects in step 7.
+
+### 7. Histogram of the total number of steps taken each day after missing values are imputed
+```{r echo = TRUE}
+data_by_date <- split(data,data$date)
+
+date_names <- names(data_by_date)
+
+steps_per_day <-numeric(length(date_names))
+for(i in 1:length(steps_per_day)){  #length(steps_per_day)
+        temp<-data_by_date[[date_names[i]]]$steps
+        temp[is.na(temp)] <-0
+        steps_per_day[i] <- sum(temp)
+        
+}
+hist(steps_per_day)
+```
+
+### 8. Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+
+"What is a Week 'end'?"
+```{r echo = TRUE}
+date_names_Date <- as.Date(date_names)
+library(timeDate)
+
+
+
+wd_steps_per_5min <-numeric(length(data_by_date[[date_names[1]]]$steps))
+we_steps_per_5min <-numeric(length(data_by_date[[date_names[1]]]$steps))
+interval <- data_by_date[[date_names[1]]]$interval
+wd_cnt <-0
+we_cnt <-0
+
+for(i in 1:length(date_names)){  #length(steps_per_day)
+        temp<-data_by_date[[date_names[i]]]$steps
+        temp[is.na(temp)] <-0
+        
+        if(isWeekday(date_names_Date[i], wday=1:5)){
+                wd_steps_per_5min <- wd_steps_per_5min + temp
+                wd_cnt <- wd_cnt+1
+                
+        }
+        else{
+                we_steps_per_5min <- we_steps_per_5min + temp
+                we_cnt <- wd_cnt+1
+        }
+}
+wd_avg_per_5min <- wd_steps_per_5min/wd_cnt
+we_avg_per_5min <- we_steps_per_5min/we_cnt
+compare_avg <-data.frame(interval = interval,wd = wd_avg_per_5min,we = we_avg_per_5min)
+we_avg <-data.frame(interval = interval,value = we_avg_per_5min)
+wd_avg <-data.frame(interval = interval,value = wd_avg_per_5min)
+
+p_we <- ggplot(we_avg, aes(x = interval, y = value)) + 
+        geom_line() +
+        xlab("interval value, seconds")+
+        ylab("Average number of steps Weekend")
+
+p_wd <- ggplot(wd_avg, aes(x = interval, y = value)) + 
+        geom_line() +
+        xlab("interval value, seconds")+
+        ylab("Average number of steps Weekday")
+
+library(grid)
+library(gtable)
+g_we_avg <- ggplotGrob(p_we)
+g_wd_avg <- ggplotGrob(p_wd)
+g <- rbind(g_we_avg,g_wd_avg,size = "first")
+
+grid.newpage()
+grid.draw(g)
+```
+
+### 9. All of the R code needed to reproduce the results (numbers, plots, etc.) in the report
+
+I believe this file, CP1.Rmd, satisfies this
